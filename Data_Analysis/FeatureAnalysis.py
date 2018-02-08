@@ -26,62 +26,62 @@ class RescalePCA:
             comp_str += str(self.component_range[0]) + '\n' + str(self.component_range[1])
         if len(self.feature_order) != 0:
             fea_str = 'Feature Order: '
-            fea_str += feature_order
+            fea_str += str(self.feature_order)
         return pca_info + '\n' + scale_info + '\n' + comp_str + '\n' + fea_str
     
-    def saveFeatureOrder(self, xs_dict):
+    def saveFeatureOrder(self, data_frame):
         cur_idx = 0
-        for fea in xs_dict:
+        for fea in list(data_frame):
             if fea != 'Time':
                 self.feature_order[fea] = cur_idx
                 cur_idx += 1
-        self.feature_order['Time'] = cur_idx
 
-    def getRescaleInfo(self, xs_dict):
-        for field in xs_dict:
+    def getRescaleInfo(self, data_frame):        
+        for field in list(data_frame):
             if field != 'Time':
-                cur_data = xs_dict[field]
+                cur_data = data_frame[field]
                 cur_max, cur_min = np.max(cur_data), np.min(cur_data)
                 self.scale_info[field] = (cur_max, cur_min)
     
-    def applyRescale(self, xs_dict):
-        out_dict = {}
-        for f in xs_dict:
-            if f != 'Time':
-                cur_data = xs_dict[f]
-                cur_max, cur_min = self.scale_info[f][0], self.scale_info[f][1]
-                out_dict[f] = (cur_data - cur_min)/(cur_max - cur_min)
-            else: out_dict[f] = xs_dict[f]
-        return out_dict
+    def applyRescale(self, data_frame):
+        out_df = data_frame.copy()
+        for fea in list(out_df):
+            if fea != 'Time': 
+                out_df[fea] = (out_df[fea] - self.scale_info[fea][1])/(self.scale_info[fea][0] - self.scale_info[fea][1])
+        return out_df
         
     def processRescalePCA(self, all_data, reduced_dim = 3):
         '''Rescale the data, and then apply the PCA reduction'''
         self.saveFeatureOrder(all_data)
         self.getRescaleInfo(all_data)
-        rescaled_data_dict = self.applyRescale(all_data)
-        data_mat = self.dictToMat(rescaled_data_dict)
+        all_rescaled_data = self.applyRescale(all_data)
+        # Fit data into PCA to obtain the dimension reduction information
+        reorder_data = self.reorderData(all_rescaled_data)
         self.PCAProcess = PCA(n_components= reduced_dim)
-        self.PCAProcess.fit(data_mat)
-        reduced_data_mat = self.PCAProcess.transform(data_mat)
+        self.PCAProcess.fit(reorder_data)
+        # Transform the original data to obtain the range for each reduced dimension
+        reduced_data_mat = self.PCAProcess.transform(reorder_data)
         self.component_range = (np.min(reduced_data_mat,0), np.max(reduced_data_mat,0))
         self.roundSecond(self.component_range)
         
     def applyRescalePCA(self, other_data):
         '''Use the pre computed sacle and PCA info to process new data'''
         rescaled_data = self.applyRescale(other_data)
-        rescaled_mat = self.dictToMat(rescaled_data)
-        PCA_data = self.PCAProcess.transform(rescaled_mat)
+        reorder_rescaled_data = self.reorderData(rescaled_data)
+        PCA_data = self.PCAProcess.transform(reorder_rescaled_data)
         return PCA_data
 
     # helpers 
-    def dictToMat(self, xs_dict):
-        all_feas = [fea for fea in xs_dict]
-        out_mat = np.zeros((len(xs_dict[all_feas[0]]), len(all_feas) - 1))
-        for fea in all_feas:
-            if fea != 'Time':
-                out_mat[:, self.feature_order[fea]] = xs_dict[fea].T
-        return out_mat
-
+    def reorderData(self, some_data):
+        '''
+        make sure the data frame organized with the same order as the initial input
+        also remove the 'Time' column, so that the dataframe can be used for PCA
+        '''
+        data_order = [None for _ in range(len(self.feature_order))]
+        for fea in self.feature_order:
+            data_order[self.feature_order[fea]] = fea
+        return some_data[data_order]
+        
     def roundSecond(self, old_range):
         '''
         old_range = (np.array(mins), np.array(maxs))
