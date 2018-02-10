@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
+from scipy import signal
+import bisect
 
 class RescalePCA:
     def __init__(self):
@@ -103,3 +105,50 @@ def HistFeature(in_data, all_range, fea_num = 5):
         cur_hist = np.histogram(cur_col, range = (all_range[0][idx], all_range[1][idx]), bins = fea_num)[0]
         out_features[idx * fea_num: (idx + 1) * fea_num] = cur_hist/np.sum(cur_hist)
     return out_features
+
+def InterpolateHistCount(count_range, xs, ys, bins):
+    ''' count range = (min, max) '''
+    out_bins = np.zeros(bins)
+    sep_vals = np.linspace(count_range[0], count_range[1], bins)
+    sep_dist = (count_range[1] - count_range[0])/(bins-1)
+    for idx in range(len(xs)):
+        x = xs[idx]
+        y = ys[idx]
+        # interpolate count 
+        upper_idx = bisect.bisect(sep_vals, x)
+        lower_idx = upper_idx - 1
+        upper_dist = sep_vals[upper_idx] - x
+        lower_dist = x - sep_vals[lower_idx]
+        # add count to the count bins 
+        out_bins[upper_idx] += lower_dist/sep_dist * y**2
+        out_bins[lower_idx] += upper_dist/sep_dist * y**2
+    # normalize the out_bins so that the sum is still one 
+    return out_bins/np.sum(out_bins)
+
+def FFTPeaks(cur_data, in_time, cut_off_sig_len, num_peaks):
+    sample_freq = np.mean(1/(np.diff(in_time)))
+    sample_period = 1/sample_freq
+    sig_len = len(cur_data)
+    fft_result = np.fft.fft(cur_data)
+    sig_fft = np.abs(fft_result/sig_len)
+    # plot fft freq result 
+    hf_len = int(sig_len/2) 
+    fft_y = sig_fft[1:hf_len + 1]
+    fft_y[1:-1] = 2 * fft_y[1:-1]
+    freq_x = sample_freq * range(0,hf_len)/sig_len
+    # find peaks and generate features with interpolative hist count 
+    all_maxs_idxs = signal.find_peaks_cwt(fft_y[:cut_off_sig_len], np.arange(0.1, 1, 0.2), noise_perc = 99)
+    maxs_idxs = [each[1] for each in sorted([(fft_y[idx], idx) for idx in all_maxs_idxs], reverse=True)[:num_peaks]]
+    return freq_x,fft_y,maxs_idxs
+
+def FFTFeature(pca_data, in_time, cut_off_sig_len = 250, fea_num = 10, num_peaks = 5):
+    out_fft_features = np.zeros(pca_data.shape[1] * fea_num)
+    for idx in range(pca_data.shape[1]):
+        cur_data = pca_data[:,idx]
+        freq_x, fft_y, maxs_idxs = FFTPeaks(cur_data, in_time, cut_off_sig_len, num_peaks)
+        x_upper_limit = freq_x[cut_off_sig_len]
+        max_freqs = freq_x[maxs_idxs]
+        max_fft_y = fft_y[maxs_idxs]/np.sum(fft_y[maxs_idxs])
+        cur_fft_features = InterpolateHistCount([0, x_upper_limit], max_freqs, max_fft_y, fea_num)
+        out_fft_features[idx * fea_num: (idx + 1) * fea_num] = cur_fft_features
+    return out_fft_features
