@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.decomposition import PCA
-from scipy import signal
+from peakutils import peak as pk
 import bisect
 
 class RescalePCA:
@@ -125,7 +125,8 @@ def InterpolateHistCount(count_range, xs, ys, bins):
     # normalize the out_bins so that the sum is still one 
     return out_bins/np.sum(out_bins)
 
-def FFTPeaks(cur_data, in_time, cut_off_sig_len, num_peaks):
+def FFTPeaks(cur_data, in_time, cut_off_sig_len, num_peaks,
+             min_dist = 5, thres = 0.1):
     sample_freq = np.mean(1/(np.diff(in_time)))
     sample_period = 1/sample_freq
     sig_len = len(cur_data)
@@ -137,11 +138,11 @@ def FFTPeaks(cur_data, in_time, cut_off_sig_len, num_peaks):
     fft_y[1:-1] = 2 * fft_y[1:-1]
     freq_x = sample_freq * range(0,hf_len)/sig_len
     # find peaks and generate features with interpolative hist count 
-    all_maxs_idxs = signal.find_peaks_cwt(fft_y[:cut_off_sig_len], np.arange(0.1, 1, 0.2), noise_perc = 99)
-    maxs_idxs = [each[1] for each in sorted([(fft_y[idx], idx) for idx in all_maxs_idxs], reverse=True)[:num_peaks]]
+    all_maxs_idxs = pk.indexes(fft_y[:cut_off_sig_len], thres, min_dist)
+    maxs_idxs = [each[1] for each in sorted([(fft_y[idx], idx) for idx in all_maxs_idxs], reverse=True)[:min(num_peaks, len(all_maxs_idxs))]]
     return freq_x,fft_y,maxs_idxs
 
-def FFTFeature(pca_data, in_time, cut_off_sig_len = 250, fea_num = 10, num_peaks = 5):
+def FFTFeature(pca_data, in_time, cut_off_sig_len = 250, fea_num = 5, num_peaks = 3):
     out_fft_features = np.zeros(pca_data.shape[1] * fea_num)
     for idx in range(pca_data.shape[1]):
         cur_data = pca_data[:,idx]
@@ -152,3 +153,5 @@ def FFTFeature(pca_data, in_time, cut_off_sig_len = 250, fea_num = 10, num_peaks
         cur_fft_features = InterpolateHistCount([0, x_upper_limit], max_freqs, max_fft_y, fea_num)
         out_fft_features[idx * fea_num: (idx + 1) * fea_num] = cur_fft_features
     return out_fft_features
+
+    
