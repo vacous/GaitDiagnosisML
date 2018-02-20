@@ -28,12 +28,13 @@ def VisMeasurements(record, plt_len = 3000):
 def VisCompareTwoPCA(pca_data_1, pca_data_2, PCA_process_obj, data_name_1, data_name_2):
     '''two compressed pca_data, the object used to process the data, two data names for plot'''
     fig = plt.figure(figsize=(15,10))
+    num_pca = pca_data_1.shape[1] 
     for plt_idx in range(pca_data_1.shape[1]):
         cur_plt_range = PCA_process_obj.component_range
-        plt.subplot(3,2,2*plt_idx+1)
+        plt.subplot(num_pca ,2,2*plt_idx+1)
         plt.title(data_name_1 + ': ' + str(plt_idx))
         plt.hist(pca_data_1[:,plt_idx], alpha=0.5, ec = 'black', range= [cur_plt_range[0][plt_idx], cur_plt_range[1][plt_idx]] )
-        plt.subplot(3,2, 2*plt_idx+2)
+        plt.subplot(num_pca ,2, 2*plt_idx+2)
         plt.title(data_name_2 + ': ' + str(plt_idx))
         plt.hist(pca_data_2[:,plt_idx], alpha = 0.5, ec = 'black', range= [cur_plt_range[0][plt_idx], cur_plt_range[1][plt_idx]])
     plt.suptitle('Comparison between ' + data_name_1 + ' and ' +  data_name_2, fontsize = 15)
@@ -83,12 +84,16 @@ def VisTrainVsTest(train_matrix, train_label, gait_types,
         plt.ylim(-0.1,1)
 
 def VisPredResult(pred_prob, label_list, test_case_name = ''):
-    plt.figure(figsize=(8,5))
+    plt.figure(figsize=(10,5))
+    plt.subplot(121)
     temp_y = range(len(label_list))
     plt.barh(temp_y, pred_prob, ec = 'black', alpha = 0.8)
+    plt.xlim(0,1)
     plt.yticks(temp_y, label_list)
     plt.xlabel('Predicted Probability', fontsize = 13)
     plt.ylabel('Categories', fontsize = 13)
-    plt.title('Classification Result' + ((' ' if len(test_case_name) != 0 else '') + test_case_name))
     plt.grid()
-    plt.tight_layout()
+    plt.subplot(122)
+    plt.pie(pred_prob, labels=label_list)
+    plt.suptitle('Classification Result' + ((' ' if len(test_case_name) != 0 else '') + test_case_name))
+    plt.subplots_adjust(top = 0.9)

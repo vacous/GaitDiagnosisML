@@ -16,7 +16,7 @@ fprintf(fileID, [field_names,'\n']);
 fprintf(fileID, num2str(num_data));
 fprintf(fileID, '\n');
 %Define port as 'S' and open port
-s=serial('COM3');
+s=serial('COM4');
 s.Baudrate = 250000;
 fopen(s);
 while length(strsplit(fscanf(s), ' ')) ~= num_fields

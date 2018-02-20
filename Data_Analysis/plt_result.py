@@ -7,5 +7,5 @@ Created on Sun Feb 18 22:54:07 2018
 
 from DataProcessing import ToPandasData
 from DataVisulization import VisMeasurements
-test_data = ToPandasData('../Data_Collection/' + 'ran_side_01' + '.txt')
+test_data = ToPandasData('../Data_Collection/' + 'aaa' + '.txt')
 VisMeasurements(test_data)
