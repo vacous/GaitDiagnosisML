@@ -85,7 +85,6 @@ def VisTrainVsTest(train_matrix, train_label, gait_types,
 
 def VisPredResult(pred_prob, label_list, test_case_name = ''):
     plt.figure(figsize=(10,5))
-    plt.subplot(121)
     temp_y = range(len(label_list))
     plt.barh(temp_y, pred_prob, ec = 'black', alpha = 0.8)
     plt.xlim(0,1)
@@ -93,7 +92,3 @@ def VisPredResult(pred_prob, label_list, test_case_name = ''):
     plt.xlabel('Predicted Probability', fontsize = 13)
     plt.ylabel('Categories', fontsize = 13)
     plt.grid()
-    plt.subplot(122)
-    plt.pie(pred_prob, labels=label_list)
-    plt.suptitle('Classification Result' + ((' ' if len(test_case_name) != 0 else '') + test_case_name))
-    plt.subplots_adjust(top = 0.9)
